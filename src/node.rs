@@ -126,7 +126,7 @@ pub struct NodeConstructor<'a> {
     pub(crate) args: NodeArgs,
 }
 
-impl<'a, 'b> NodeConstructor<'a> {
+impl<'a> NodeConstructor<'a> {
     /// Create a new node to be displayed in a Context.
     /// id should be the same accross frames and should not be the same as any other currently used nodes
     pub fn new(id: usize, args: NodeArgs) -> Self {

@@ -145,12 +145,12 @@ impl Context {
             self.pins.reset();
             self.links.reset();
 
-            self.hovered_node_index.take();
-            self.interactive_node_index.take();
-            self.hovered_link_idx.take();
+            Option::take(&mut self.hovered_node_index);
+            Option::take(&mut self.interactive_node_index);
+            Option::take(&mut self.hovered_link_idx);
             self.hovered_pin_flags = AttributeFlags::None as usize;
-            self.deleted_link_idx.take();
-            self.snap_link_idx.take();
+            Option::take(&mut self.deleted_link_idx);
+            Option::take(&mut self.snap_link_idx);
 
             self.node_indices_overlapping_with_mouse.clear();
             self.element_state_change = ElementStateChange::None as usize;
@@ -167,7 +167,8 @@ impl Context {
             {
                 let ui = &mut ui;
                 ui.set_clip_rect(
-                    self.canvas_rect_screen_space.intersect(ui.ctx().input().screen_rect()),
+                    self.canvas_rect_screen_space
+                        .intersect(ui.ctx().input(|input| input.screen_rect())),
                 );
                 ui.painter().rect_filled(
                     self.canvas_rect_screen_space,
@@ -200,7 +201,6 @@ impl Context {
                 egui::Sense::click_and_drag(),
             );
             {
-                let io = ui.ctx().input();
                 let mouse_pos = if let Some(mouse_pos) = response.hover_pos() {
                     self.mouse_in_canvas = true;
                     mouse_pos
@@ -210,7 +210,8 @@ impl Context {
                 };
                 self.mouse_delta = mouse_pos - self.mouse_pos;
                 self.mouse_pos = mouse_pos;
-                let left_mouse_clicked = io.pointer.button_down(egui::PointerButton::Primary);
+                let (modifiers, pointer) = ui.ctx().input(|io| (io.modifiers, io.pointer.clone()));
+                let left_mouse_clicked = pointer.button_down(egui::PointerButton::Primary);
                 self.left_mouse_released =
                     (self.left_mouse_clicked || self.left_mouse_dragging) && !left_mouse_clicked;
                 self.left_mouse_dragging =
@@ -218,14 +219,14 @@ impl Context {
                 self.left_mouse_clicked =
                     left_mouse_clicked && !(self.left_mouse_clicked || self.left_mouse_dragging);
 
-                let alt_mouse_clicked = self.io.emulate_three_button_mouse.is_active(&io.modifiers)
-                    || self.io.alt_mouse_button.map_or(false, |x| io.pointer.button_down(x));
+                let alt_mouse_clicked = self.io.emulate_three_button_mouse.is_active(&modifiers)
+                    || self.io.alt_mouse_button.map_or(false, |x| pointer.button_down(x));
                 self.alt_mouse_dragging =
                     (self.alt_mouse_clicked || self.alt_mouse_dragging) && alt_mouse_clicked;
                 self.alt_mouse_clicked =
                     alt_mouse_clicked && !(self.alt_mouse_clicked || self.alt_mouse_dragging);
                 self.link_detatch_with_modifier_click =
-                    self.io.link_detatch_with_modifier_click.is_active(&io.modifiers);
+                    self.io.link_detatch_with_modifier_click.is_active(&modifiers);
             }
             {
                 let ui = &mut ui;
@@ -490,7 +491,7 @@ impl Context {
 }
 
 impl Context {
-    fn add_node<'a>(
+    fn add_node(
         &mut self,
         idx: usize,
         NodeConstructor {
@@ -499,7 +500,7 @@ impl Context {
             attributes,
             pos: _,
             args,
-        }: NodeConstructor<'a>,
+        }: NodeConstructor<'_>,
         ui: &mut egui::Ui,
     ) {
         let node = &mut self.nodes.pool[idx];
